@@ -31,6 +31,7 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
+import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import javax.swing.plaf.basic.BasicTabbedPaneUI;
@@ -147,6 +148,7 @@ public class GoblinPanel extends PluginPanel
 		overviewHeaderPanel.add(overallWritingValue, BorderLayout.CENTER);
 
 		overviewProgressPanel.setOpaque(false);
+		overviewProgressPanel.setBorder(new EmptyBorder(2, 2, 2, 2));
 		campaignProgressLabel.setFont(SUBHEADER_FONT);
 		milestoneProgressLabel.setFont(SUBHEADER_FONT);
 		milestoneWindowLabel.setFont(PANEL_FONT);
@@ -159,7 +161,7 @@ public class GoblinPanel extends PluginPanel
 		overviewProgressPanel.add(milestoneEtaLabel);
 
 		overviewTopPanel.setOpaque(false);
-		overviewTopPanel.setBorder(new EmptyBorder(2, 4, 4, 4));
+		overviewTopPanel.setBorder(new EmptyBorder(6, 8, 6, 8));
 		overviewTopPanel.add(overviewHeaderPanel, BorderLayout.NORTH);
 		overviewTopPanel.add(overviewProgressPanel, BorderLayout.CENTER);
 
@@ -351,7 +353,9 @@ public class GoblinPanel extends PluginPanel
 		overviewTopPanel.setBackground(topBackground);
 		overviewHeaderPanel.setBackground(topBackground);
 		overviewProgressPanel.setBackground(topBackground);
-		overviewTopPanel.setBorder(new MatteBorder(1, 1, 1, 1, borderColor));
+		overviewTopPanel.setBorder(new CompoundBorder(
+			new MatteBorder(1, 1, 1, 1, borderColor),
+			new EmptyBorder(6, 8, 6, 8)));
 
 		headingLabel.setForeground(headingColor);
 		overallWritingValue.setForeground(textColor);
@@ -377,7 +381,9 @@ public class GoblinPanel extends PluginPanel
 		bar.setBorderPainted(true);
 		bar.setFocusable(false);
 		bar.setOpaque(true);
-		bar.setBorder(new MatteBorder(1, 1, 1, 1, borderColor));
+		bar.setBorder(new CompoundBorder(
+			new MatteBorder(1, 1, 1, 1, borderColor),
+			new EmptyBorder(1, 2, 1, 2)));
 	}
 
 	private void styleArea(JTextArea area, Color background, Color foreground)
