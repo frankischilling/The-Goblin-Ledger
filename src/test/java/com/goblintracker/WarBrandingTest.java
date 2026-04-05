@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.goblintracker.branding.WarBranding;
-import com.goblintracker.branding.WarToneMode;
 import java.util.List;
 import org.junit.Test;
 
@@ -26,13 +25,12 @@ public class WarBrandingTest
 	}
 
 	@Test
-	public void milestoneMessageUsesToneTemplates()
+	public void milestoneMessageUsesCanonicalTemplate()
 	{
-		String prophet = WarBranding.milestoneMessage(1000, WarToneMode.UNHINGED_PROPHET);
-		String bureaucratic = WarBranding.milestoneMessage(1000, WarToneMode.GRIM_BUREAUCRATIC);
+		String message = WarBranding.milestoneMessage(1000);
 
-		assertTrue(prophet.contains("Milestone:"));
-		assertTrue(bureaucratic.contains("Campaign update:"));
+		assertTrue(message.contains("Prophecy mark reached:"));
+		assertTrue(message.contains("1,000") || message.contains("1000"));
 	}
 
 	@Test
@@ -48,11 +46,11 @@ public class WarBrandingTest
 	}
 
 	@Test
-	public void panelLabelsChangeWithTone()
+	public void panelLabelsUseCanonicalLoreVoice()
 	{
-		assertEquals("Today's Eliminations: ", WarBranding.overviewSessionLabel(WarToneMode.UNHINGED_PROPHET));
-		assertEquals("Session Eliminations: ", WarBranding.overviewSessionLabel(WarToneMode.STRICT_SERIOUS));
-		assertEquals("Session Kills: ", WarBranding.overviewSessionLabel(WarToneMode.NEUTRAL_SIMPLE));
+		assertEquals("Kills this day: ", WarBranding.overviewSessionLabel());
+		assertEquals("War-book oath: ", WarBranding.overviewOverallWritingLabel());
+		assertEquals("Next prophecy ETA: ", WarBranding.overviewMilestoneEtaLabel());
 	}
 
 	@Test
@@ -60,8 +58,8 @@ public class WarBrandingTest
 	{
 		String progress = WarBranding.milestoneProgressSummary(1200);
 		String completed = WarBranding.milestoneProgressSummary(1_000_000);
-		String eta = WarBranding.milestoneEtaSummary(1200, 300, WarToneMode.STRICT_SERIOUS);
-		String etaUnknown = WarBranding.milestoneEtaSummary(1200, 0, WarToneMode.STRICT_SERIOUS);
+		String eta = WarBranding.milestoneEtaSummary(1200, 300);
+		String etaUnknown = WarBranding.milestoneEtaSummary(1200, 0);
 
 		assertTrue(progress.contains("toward 5,000"));
 		assertTrue(progress.contains("1,000 -> 5,000"));
@@ -69,24 +67,24 @@ public class WarBrandingTest
 		assertTrue(progress.contains("]"));
 		assertTrue(completed.contains("100.00% complete"));
 		assertTrue(eta.contains("13h to 5,000"));
-		assertTrue(etaUnknown.contains("Unavailable"));
+		assertTrue(etaUnknown.contains("Unknown"));
 		assertEquals(5, WarBranding.milestoneProgressPercent(1200));
 		assertEquals("1,000 -> 5,000 (3,800 remaining)", WarBranding.milestoneWindowText(1200));
-		assertEquals("Milestone ETA: ", WarBranding.overviewMilestoneEtaLabel(WarToneMode.STRICT_SERIOUS));
+		assertEquals("Next prophecy ETA: ", WarBranding.overviewMilestoneEtaLabel());
 	}
 
 	@Test
 	public void campaignProgressAndProjectionProvideUsefulOutput()
 	{
 		String campaign = WarBranding.campaignProgressSummary(1200);
-		String unknownProjection = WarBranding.projectedCompletionSummary(1200, 0, WarToneMode.STRICT_SERIOUS);
-		String projected = WarBranding.projectedCompletionSummary(1200, 300, WarToneMode.STRICT_SERIOUS);
+		String unknownProjection = WarBranding.projectedCompletionSummary(1200, 0);
+		String projected = WarBranding.projectedCompletionSummary(1200, 300);
 
 		assertTrue(campaign.contains("1,200 / 1,000,000"));
 		assertTrue(campaign.contains("["));
-		assertTrue(unknownProjection.contains("Unavailable"));
+		assertTrue(unknownProjection.contains("Unknown"));
 		assertTrue(projected.contains("~"));
-		assertTrue(projected.contains("at current pace"));
+		assertTrue(projected.contains("current war speed"));
 		assertEquals(25, WarBranding.campaignProgressPercent(250_000));
 	}
 
@@ -95,29 +93,38 @@ public class WarBrandingTest
 	{
 		String firstTagline = WarBranding.rotatingTagline(0, 25);
 		String laterTagline = WarBranding.rotatingTagline(250, 25);
-		String earlyTitle = WarBranding.operativeTitle(50, WarToneMode.UNHINGED_PROPHET);
-		String advancedTitle = WarBranding.operativeTitle(100_000, WarToneMode.UNHINGED_PROPHET);
+		String earlyTitle = WarBranding.operativeTitle(50);
+		String advancedTitle = WarBranding.operativeTitle(100_000);
 
 		assertTrue(!firstTagline.equals(laterTagline));
-		assertEquals("Initiate of the Count", earlyTitle);
-		assertEquals("Keeper of the Ledger", advancedTitle);
+		assertEquals("New War Scribe", earlyTitle);
+		assertEquals("Temple War Captain", advancedTitle);
 	}
 
 	@Test
 	public void overallWritingReturnsSingleDistinctLine()
 	{
-		String serious = WarBranding.overallWriting(1200, 25, WarToneMode.STRICT_SERIOUS);
-		String prophet = WarBranding.overallWriting(1200, 25, WarToneMode.UNHINGED_PROPHET);
+		String writing = WarBranding.overallWriting(1200, 25);
 
-		assertTrue(serious.contains(" - "));
-		assertTrue(prophet.equals(prophet.toUpperCase()));
-		assertEquals("Overall Charge: ", WarBranding.overviewOverallWritingLabel(WarToneMode.STRICT_SERIOUS));
+		assertTrue(writing.contains(" | "));
+		assertEquals("War-book oath: ", WarBranding.overviewOverallWritingLabel());
 	}
 
 	@Test
 	public void identityConstantsMatchLedgerBrand()
 	{
 		assertEquals("The Goblin Ledger", WarBranding.PLUGIN_NAME);
-		assertEquals("Every goblin counts.", WarBranding.PLUGIN_TAGLINE);
+		assertEquals("Big High War God count every goblin.", WarBranding.PLUGIN_TAGLINE);
+	}
+
+	@Test
+	public void canonBookTabAndLoreTextAreExposed()
+	{
+		String loreText = WarBranding.bronzeCountLoreText();
+
+		assertEquals("Canon Book", WarBranding.tabCanonBookLabel());
+		assertTrue(loreText.contains("THE BRONZE COUNT"));
+		assertTrue(loreText.contains("A Goblin Chronicle of War, Prophecy, and the Million Dead"));
+		assertTrue(loreText.contains("or building the throne?"));
 	}
 }

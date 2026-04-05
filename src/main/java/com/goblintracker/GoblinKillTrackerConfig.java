@@ -1,7 +1,6 @@
 package com.goblintracker;
 
 import com.goblintracker.branding.WarThemeMode;
-import com.goblintracker.branding.WarToneMode;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
@@ -153,21 +152,10 @@ public interface GoblinKillTrackerConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "toneMode",
-		name = "Narrative tone",
-		description = "Choose how milestone and campaign text is written",
-		position = 13
-	)
-	default WarToneMode toneMode()
-	{
-		return WarToneMode.UNHINGED_PROPHET;
-	}
-
-	@ConfigItem(
 		keyName = "visualTheme",
 		name = "Visual theme",
 		description = "Color style for overlay flash and sidebar icon",
-		position = 14
+		position = 13
 	)
 	default WarThemeMode visualTheme()
 	{
@@ -178,7 +166,7 @@ public interface GoblinKillTrackerConfig extends Config
 		keyName = "showFlavorText",
 		name = "Show flavor text",
 		description = "Display rotating campaign flavor lines in the panel",
-		position = 15
+		position = 14
 	)
 	default boolean showFlavorText()
 	{
@@ -189,7 +177,7 @@ public interface GoblinKillTrackerConfig extends Config
 		keyName = "flavorLineStride",
 		name = "Flavor line cadence",
 		description = "Rotate the campaign flavor line every N lifetime kills",
-		position = 16
+		position = 15
 	)
 	default int flavorLineStride()
 	{
@@ -200,7 +188,7 @@ public interface GoblinKillTrackerConfig extends Config
 		keyName = "dataFilePath",
 		name = "Data file path",
 		description = "File path for export/import (relative paths resolve under your home folder)",
-		position = 17
+		position = 16
 	)
 	default String dataFilePath()
 	{
@@ -211,7 +199,7 @@ public interface GoblinKillTrackerConfig extends Config
 		keyName = "exportData",
 		name = "Export data",
 		description = "Toggle on to export counters and loot data to the configured file",
-		position = 18
+		position = 17
 	)
 	default boolean exportData()
 	{
@@ -222,7 +210,7 @@ public interface GoblinKillTrackerConfig extends Config
 		keyName = "importData",
 		name = "Import data",
 		description = "Toggle on to load counters and loot data from the configured file",
-		position = 19
+		position = 18
 	)
 	default boolean importData()
 	{
@@ -233,7 +221,7 @@ public interface GoblinKillTrackerConfig extends Config
 		keyName = "resetAllCount",
 		name = "Reset all counters",
 		description = "Toggle on to reset session/trip/lifetime kills and loot history",
-		position = 20
+		position = 19
 	)
 	default boolean resetAllCount()
 	{

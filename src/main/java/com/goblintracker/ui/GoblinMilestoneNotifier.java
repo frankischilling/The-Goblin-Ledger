@@ -2,7 +2,6 @@ package com.goblintracker.ui;
 
 import com.goblintracker.GoblinKillTrackerConfig;
 import com.goblintracker.branding.WarBranding;
-import com.goblintracker.branding.WarToneMode;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.ChatMessageType;
@@ -40,14 +39,13 @@ public class GoblinMilestoneNotifier
 		}
 
 		lastMilestoneLifetime = lifetimeKills;
-		WarToneMode toneMode = config.toneMode();
-		String message = WarBranding.milestoneMessage(lifetimeKills, toneMode);
+		String message = WarBranding.milestoneMessage(lifetimeKills);
 
 		if (config.showFlavorText())
 		{
 			int stride = config.flavorLineStride();
 			message = message
-				+ " " + WarBranding.overallWriting(lifetimeKills, stride, toneMode);
+				+ " " + WarBranding.overallWriting(lifetimeKills, stride);
 		}
 
 		if (config.notifyWithPopup())

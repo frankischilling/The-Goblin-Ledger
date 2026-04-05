@@ -48,8 +48,8 @@ import net.runelite.client.ui.overlay.OverlayManager;
 
 @PluginDescriptor(
 	name = "The Goblin Ledger",
-	description = "Campaign ledger for the one million goblin objective",
-	tags = {"goblin", "ledger", "tracker", "milestone", "combat", "war"}
+	description = "Canon war-book tracker for the one million goblin prophecy",
+	tags = {"goblin", "ledger", "war-book", "tracker", "milestone", "prophecy"}
 )
 public class GoblinKillTrackerPlugin extends Plugin
 {

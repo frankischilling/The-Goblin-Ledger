@@ -5,7 +5,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.goblintracker.branding.WarToneMode;
 import com.goblintracker.ui.GoblinMilestoneNotifier;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -25,7 +24,6 @@ public class GoblinMilestoneNotifierTest
 		when(config.notifyWithPopup()).thenReturn(true);
 		when(config.notifyInChat()).thenReturn(false);
 		when(config.notifyOverlayFlash()).thenReturn(true);
-		when(config.toneMode()).thenReturn(WarToneMode.UNHINGED_PROPHET);
 		when(config.showFlavorText()).thenReturn(false);
 
 		GoblinMilestoneNotifier milestoneNotifier = new GoblinMilestoneNotifier(config, notifier, client);
@@ -34,6 +32,6 @@ public class GoblinMilestoneNotifierTest
 
 		ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
 		verify(notifier).notify(captor.capture());
-		assertTrue(captor.getValue().contains("Milestone:"));
+		assertTrue(captor.getValue().contains("Prophecy mark reached:"));
 	}
 }

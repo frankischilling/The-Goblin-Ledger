@@ -67,7 +67,7 @@ public class GoblinKillTrackerOverlayTest
 			assertEquals(2, panelComponent.getChildren().size());
 			assertTrue(first instanceof LineComponent);
 			assertTrue(second instanceof LineComponent);
-			assertEquals("Session", getStringField(first, "left"));
+			assertEquals("Day", getStringField(first, "left"));
 			assertEquals("3", getStringField(first, "right"));
 			assertEquals("Ledger", getStringField(second, "left"));
 			assertEquals("17", getStringField(second, "right"));
@@ -102,9 +102,9 @@ public class GoblinKillTrackerOverlayTest
 
 			assertNotNull(rendered);
 			assertEquals(4, panelComponent.getChildren().size());
-			assertEquals("Field", getStringField(panelComponent.getChildren().get(2), "left"));
+			assertEquals("March", getStringField(panelComponent.getChildren().get(2), "left"));
 			assertEquals("5", getStringField(panelComponent.getChildren().get(2), "right"));
-			assertEquals("Purge/hr", getStringField(panelComponent.getChildren().get(3), "left"));
+			assertEquals("War/hr", getStringField(panelComponent.getChildren().get(3), "left"));
 			assertEquals("180", getStringField(panelComponent.getChildren().get(3), "right"));
 		}
 		finally
