@@ -72,14 +72,6 @@ The plugin currently supports options for:
 - Visual theme mode
 - Flavor text and cadence
 
-## Publishing Notes
-
-For RuneLite Plugin Hub style repositories:
-
-1. Keep this repository public.
-2. Keep metadata in runelite-plugin.properties updated.
-3. Add a LICENSE file (BSD 2-Clause is common for Plugin Hub projects).
-4. Keep this README updated with new features and configuration changes.
 
 ## Roadmap Ideas
 
