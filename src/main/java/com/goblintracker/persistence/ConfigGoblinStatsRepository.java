@@ -1,6 +1,8 @@
 package com.goblintracker.persistence;
 
 import com.goblintracker.GoblinKillTrackerPlugin;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import javax.inject.Inject;
@@ -15,6 +17,8 @@ public class ConfigGoblinStatsRepository implements GoblinStatsRepository
 	private static final String TODAY_LOOT_DATE_KEY = "todayLootDate";
 	private static final String TODAY_LOOT_TOTALS_KEY = "todayLootTotals";
 	private static final String MILESTONE_REACHED_AT_MS_KEY = "milestoneReachedAtMs";
+	private static final String DAILY_KILL_COUNTS_KEY = "dailyKillCounts";
+	private static final String AREA_KILL_COUNTS_KEY = "areaKillCounts";
 
 	private final ConfigManager configManager;
 
@@ -120,6 +124,44 @@ public class ConfigGoblinStatsRepository implements GoblinStatsRepository
 			serializeLootTotals(milestoneTimes));
 	}
 
+	@Override
+	public Map<String, Integer> loadDailyKillCounts()
+	{
+		String serialized = configManager.getRSProfileConfiguration(
+			GoblinKillTrackerPlugin.CONFIG_GROUP,
+			DAILY_KILL_COUNTS_KEY,
+			String.class);
+		return deserializeDailyKillCounts(serialized);
+	}
+
+	@Override
+	public void saveDailyKillCounts(Map<String, Integer> dailyKillCounts)
+	{
+		configManager.setRSProfileConfiguration(
+			GoblinKillTrackerPlugin.CONFIG_GROUP,
+			DAILY_KILL_COUNTS_KEY,
+			serializeDailyKillCounts(dailyKillCounts));
+	}
+
+	@Override
+	public Map<String, Integer> loadAreaKillCounts()
+	{
+		String serialized = configManager.getRSProfileConfiguration(
+			GoblinKillTrackerPlugin.CONFIG_GROUP,
+			AREA_KILL_COUNTS_KEY,
+			String.class);
+		return deserializeAreaKillCounts(serialized);
+	}
+
+	@Override
+	public void saveAreaKillCounts(Map<String, Integer> areaKillCounts)
+	{
+		configManager.setRSProfileConfiguration(
+			GoblinKillTrackerPlugin.CONFIG_GROUP,
+			AREA_KILL_COUNTS_KEY,
+			serializeAreaKillCounts(areaKillCounts));
+	}
+
 	private static String serializeLootTotals(Map<Integer, Long> lootTotals)
 	{
 		if (lootTotals == null || lootTotals.isEmpty())
@@ -190,5 +232,162 @@ public class ConfigGoblinStatsRepository implements GoblinStatsRepository
 		}
 
 		return totals;
+	}
+
+	private static String serializeDailyKillCounts(Map<String, Integer> dailyKillCounts)
+	{
+		if (dailyKillCounts == null || dailyKillCounts.isEmpty())
+		{
+			return "";
+		}
+
+		StringBuilder builder = new StringBuilder();
+		for (Map.Entry<String, Integer> entry : dailyKillCounts.entrySet())
+		{
+			if (entry == null || entry.getKey() == null || entry.getValue() == null)
+			{
+				continue;
+			}
+
+			String dateKey = entry.getKey().trim();
+			if (dateKey.isBlank())
+			{
+				continue;
+			}
+
+			if (builder.length() > 0)
+			{
+				builder.append(',');
+			}
+			builder.append(dateKey).append(':').append(Math.max(0, entry.getValue()));
+		}
+		return builder.toString();
+	}
+
+	private static Map<String, Integer> deserializeDailyKillCounts(String serialized)
+	{
+		if (serialized == null || serialized.isBlank())
+		{
+			return Map.of();
+		}
+
+		Map<String, Integer> counts = new HashMap<>();
+		String[] parts = serialized.split(",");
+		for (String part : parts)
+		{
+			if (part == null || part.isBlank())
+			{
+				continue;
+			}
+
+			String[] kv = part.split(":", 2);
+			if (kv.length != 2)
+			{
+				continue;
+			}
+
+			try
+			{
+				String dateKey = kv[0].trim();
+				int count = Integer.parseInt(kv[1].trim());
+				if (dateKey.isBlank() || count < 0)
+				{
+					continue;
+				}
+
+				counts.merge(dateKey, count, Integer::sum);
+			}
+			catch (NumberFormatException ignored)
+			{
+				// Ignore malformed daily count entries.
+			}
+		}
+
+		if (counts.isEmpty())
+		{
+			return Map.of();
+		}
+
+		return counts;
+	}
+
+	private static String serializeAreaKillCounts(Map<String, Integer> areaKillCounts)
+	{
+		if (areaKillCounts == null || areaKillCounts.isEmpty())
+		{
+			return "";
+		}
+
+		StringBuilder builder = new StringBuilder();
+		for (Map.Entry<String, Integer> entry : areaKillCounts.entrySet())
+		{
+			if (entry == null || entry.getKey() == null || entry.getValue() == null)
+			{
+				continue;
+			}
+
+			String areaName = entry.getKey().trim();
+			if (areaName.isBlank())
+			{
+				continue;
+			}
+
+			String encodedArea = Base64.getUrlEncoder().withoutPadding()
+				.encodeToString(areaName.getBytes(StandardCharsets.UTF_8));
+			if (builder.length() > 0)
+			{
+				builder.append(',');
+			}
+			builder.append(encodedArea).append(':').append(Math.max(0, entry.getValue()));
+		}
+
+		return builder.toString();
+	}
+
+	private static Map<String, Integer> deserializeAreaKillCounts(String serialized)
+	{
+		if (serialized == null || serialized.isBlank())
+		{
+			return Map.of();
+		}
+
+		Map<String, Integer> counts = new HashMap<>();
+		String[] parts = serialized.split(",");
+		for (String part : parts)
+		{
+			if (part == null || part.isBlank())
+			{
+				continue;
+			}
+
+			String[] kv = part.split(":", 2);
+			if (kv.length != 2)
+			{
+				continue;
+			}
+
+			try
+			{
+				String areaName = new String(Base64.getUrlDecoder().decode(kv[0].trim()), StandardCharsets.UTF_8).trim();
+				int count = Integer.parseInt(kv[1].trim());
+				if (areaName.isBlank() || count < 0)
+				{
+					continue;
+				}
+
+				counts.merge(areaName, count, Integer::sum);
+			}
+			catch (IllegalArgumentException ignored)
+			{
+				// Ignore malformed area count entries.
+			}
+		}
+
+		if (counts.isEmpty())
+		{
+			return Map.of();
+		}
+
+		return counts;
 	}
 }

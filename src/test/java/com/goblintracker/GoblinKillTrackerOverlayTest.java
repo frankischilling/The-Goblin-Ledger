@@ -47,7 +47,7 @@ public class GoblinKillTrackerOverlayTest
 		GoblinKillTrackerPlugin plugin = mock(GoblinKillTrackerPlugin.class);
 		GoblinKillTrackerConfig config = mock(GoblinKillTrackerConfig.class);
 		when(plugin.getConfig()).thenReturn(config);
-		when(plugin.getSessionGoblinKills()).thenReturn(3);
+		when(plugin.getTodayGoblinKills()).thenReturn(3);
 		when(plugin.getLifetimeGoblinKills()).thenReturn(17);
 		when(config.showOverlay()).thenReturn(true);
 		when(config.showTripStats()).thenReturn(false);
@@ -84,7 +84,7 @@ public class GoblinKillTrackerOverlayTest
 		GoblinKillTrackerPlugin plugin = mock(GoblinKillTrackerPlugin.class);
 		GoblinKillTrackerConfig config = mock(GoblinKillTrackerConfig.class);
 		when(plugin.getConfig()).thenReturn(config);
-		when(plugin.getSessionGoblinKills()).thenReturn(9);
+		when(plugin.getTodayGoblinKills()).thenReturn(9);
 		when(plugin.getLifetimeGoblinKills()).thenReturn(42);
 		when(plugin.getTripGoblinKills()).thenReturn(5);
 		when(plugin.getSessionKillsPerHour()).thenReturn(180);

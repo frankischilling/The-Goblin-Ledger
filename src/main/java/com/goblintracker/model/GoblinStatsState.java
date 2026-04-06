@@ -17,6 +17,7 @@ public class GoblinStatsState
 	private long sessionStartedAtMs;
 	private long tripStartedAtMs;
 	private final Map<String, Integer> areaKillCounts = new HashMap<>();
+	private final Map<String, Integer> dailyKillCounts = new HashMap<>();
 	private final Map<Integer, Long> todayLootTotals = new HashMap<>();
 	private final Map<Integer, Long> lifetimeLootTotals = new HashMap<>();
 	private final Map<Integer, Long> milestoneReachedAtMs = new HashMap<>();
@@ -38,6 +39,7 @@ public class GoblinStatsState
 		sessionStartedAtMs = now;
 		tripStartedAtMs = now;
 		areaKillCounts.clear();
+		dailyKillCounts.clear();
 		todayLootTotals.clear();
 		lifetimeLootTotals.clear();
 		milestoneReachedAtMs.clear();
@@ -80,6 +82,56 @@ public class GoblinStatsState
 		}
 	}
 
+	public void setDailyKillCounts(Map<String, Integer> dailyCounts)
+	{
+		dailyKillCounts.clear();
+		if (dailyCounts == null || dailyCounts.isEmpty())
+		{
+			return;
+		}
+
+		for (Map.Entry<String, Integer> entry : dailyCounts.entrySet())
+		{
+			if (entry == null || entry.getKey() == null || entry.getValue() == null)
+			{
+				continue;
+			}
+
+			String dateKey = entry.getKey().trim();
+			if (dateKey.isBlank())
+			{
+				continue;
+			}
+
+			dailyKillCounts.put(dateKey, Math.max(0, entry.getValue()));
+		}
+	}
+
+	public void setAreaKillCounts(Map<String, Integer> areaCounts)
+	{
+		areaKillCounts.clear();
+		if (areaCounts == null || areaCounts.isEmpty())
+		{
+			return;
+		}
+
+		for (Map.Entry<String, Integer> entry : areaCounts.entrySet())
+		{
+			if (entry == null || entry.getKey() == null || entry.getValue() == null)
+			{
+				continue;
+			}
+
+			String areaName = entry.getKey().trim();
+			if (areaName.isBlank())
+			{
+				continue;
+			}
+
+			areaKillCounts.put(areaName, Math.max(0, entry.getValue()));
+		}
+	}
+
 	public boolean recordMilestoneReachedAt(int milestoneKills, long reachedAtMs)
 	{
 		if (milestoneKills <= 0 || reachedAtMs <= 0L || milestoneReachedAtMs.containsKey(milestoneKills))
@@ -98,7 +150,7 @@ public class GoblinStatsState
 		lifetimeKills++;
 	}
 
-	public void recordKill(GoblinKillRecord killRecord, Map<Integer, Long> killLootTotals)
+	public void recordKill(GoblinKillRecord killRecord, Map<Integer, Long> killLootTotals, String dateKey)
 	{
 		incrementKill();
 
@@ -106,6 +158,10 @@ public class GoblinStatsState
 			? "Unknown"
 			: killRecord.getAreaName();
 		areaKillCounts.merge(areaName, 1, Integer::sum);
+		if (dateKey != null && !dateKey.isBlank())
+		{
+			dailyKillCounts.merge(dateKey, 1, Integer::sum);
+		}
 
 		if (killLootTotals != null)
 		{
@@ -182,6 +238,11 @@ public class GoblinStatsState
 	public Map<Integer, Long> getMilestoneReachedAtMs()
 	{
 		return new HashMap<>(milestoneReachedAtMs);
+	}
+
+	public Map<String, Integer> getDailyKillCounts()
+	{
+		return new HashMap<>(dailyKillCounts);
 	}
 
 	public List<GoblinKillRecord> getRecentKills()

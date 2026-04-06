@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.goblintracker.model.GoblinKillRecord;
 import com.goblintracker.ui.GoblinPanel;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -91,10 +92,15 @@ public class GoblinPanelTest
 		when(config.showFlavorText()).thenReturn(false);
 		when(config.flavorLineStride()).thenReturn(25);
 		when(plugin.getSessionGoblinKills()).thenReturn(12);
+		when(plugin.getTodayGoblinKills()).thenReturn(12);
 		when(plugin.getTripGoblinKills()).thenReturn(4);
 		when(plugin.getLifetimeGoblinKills()).thenReturn(1200);
 		when(plugin.getSessionKillsPerHour()).thenReturn(300);
 		when(plugin.getActiveProfileName()).thenReturn("Frank");
+		when(plugin.getDailyKillCounts()).thenReturn(Map.of(
+			"2026-04-01", 45,
+			"2026-04-02", 120,
+			"2026-04-03", 85));
 		when(plugin.getMilestoneReachedAtMs()).thenReturn(Map.of(
 			100, 1_700_000_000_000L,
 			1_000, 1_700_003_600_000L));
@@ -107,12 +113,22 @@ public class GoblinPanelTest
 		flushEdt();
 
 		String overview = getText(panel, "overviewArea");
+		String stats = getText(panel, "statsArea");
 		String loreBook = getText(panel, "loreBookArea");
 		Map<?, ?> chapterMap = getMap(panel, "canonSectionHeadings");
 		Map<?, ?> tocButtons = getMap(panel, "loreTocButtons");
 		Map<?, ?> loreUnlockAreas = getMap(panel, "loreUnlockAreas");
 		assertTrue(overview.contains("War-book oath:"));
 		assertTrue(overview.contains("Kills this day: 12"));
+		assertTrue(overview.contains("=== Daily War Ledger ==="));
+		assertTrue(overview.contains("Highest day:"));
+		assertTrue(overview.contains("Top days:"));
+		assertTrue(stats.contains("=== Time Window Stats ==="));
+		assertTrue(stats.contains("1h (current pace):"));
+		assertTrue(stats.contains("7d:"));
+		assertTrue(stats.contains("=== Campaign Cadence ==="));
+		assertTrue(stats.contains("=== Streak Tracker ==="));
+		assertTrue(stats.contains("=== Milestone Intelligence ==="));
 		assertTrue(overview.contains("Prophecy marks reached:"));
 		assertTrue(overview.contains("When war ends:"));
 		assertTrue(overview.contains("War title:"));
@@ -161,12 +177,13 @@ public class GoblinPanelTest
 		assertTrue(chapter10000.getText().contains("Reach 10,000 goblin kills"));
 
 		JTabbedPane tabs = getTabs(panel);
-		assertEquals(5, tabs.getTabCount());
+		assertEquals(6, tabs.getTabCount());
 		assertEquals("War Book", tabs.getTitleAt(0));
-		assertEquals("Tribes", tabs.getTitleAt(1));
-		assertEquals("Spoils", tabs.getTitleAt(2));
-		assertEquals("Chronicle", tabs.getTitleAt(3));
-		assertEquals("Lore Reader", tabs.getTitleAt(4));
+		assertEquals("Stats", tabs.getTitleAt(1));
+		assertEquals("Tribes", tabs.getTitleAt(2));
+		assertEquals("Spoils", tabs.getTitleAt(3));
+		assertEquals("Chronicle", tabs.getTitleAt(4));
+		assertEquals("Lore Reader", tabs.getTitleAt(5));
 	}
 
 	@Test
@@ -239,6 +256,40 @@ public class GoblinPanelTest
 		assertEquals(0, loreSubTabs.getSelectedIndex());
 	}
 
+	@Test
+	public void extractChronicleChapterTextReturnsFocusedChapterSlice() throws Exception
+	{
+		GoblinKillTrackerPlugin plugin = mock(GoblinKillTrackerPlugin.class);
+		when(plugin.getAreaKillCounts()).thenReturn(Map.of());
+		when(plugin.getLootTotals()).thenReturn(Map.of());
+		when(plugin.getRecentKills()).thenReturn(List.of());
+
+		GoblinPanel panel = new GoblinPanel(plugin);
+		panel.refresh();
+		flushEdt();
+
+		String chapter = (String) invokePrivate(panel, "extractChronicleChapterText", new Class<?>[]{String.class}, "vii-the-throne-of-bronze");
+		assertTrue(chapter.contains("VII. The Throne of Bronze"));
+		assertFalse(chapter.contains("VIII. The Last Question"));
+	}
+
+	@Test
+	public void extractChronicleChapterTextFallsBackToFullTextWhenChapterMissing() throws Exception
+	{
+		GoblinKillTrackerPlugin plugin = mock(GoblinKillTrackerPlugin.class);
+		when(plugin.getAreaKillCounts()).thenReturn(Map.of());
+		when(plugin.getLootTotals()).thenReturn(Map.of());
+		when(plugin.getRecentKills()).thenReturn(List.of());
+
+		GoblinPanel panel = new GoblinPanel(plugin);
+		panel.refresh();
+		flushEdt();
+
+		String fullLore = getText(panel, "loreBookArea");
+		String resolved = (String) invokePrivate(panel, "extractChronicleChapterText", new Class<?>[]{String.class}, "missing-chapter");
+		assertEquals(fullLore, resolved);
+	}
+
 	private static String getText(GoblinPanel panel, String fieldName) throws Exception
 	{
 		Field field = GoblinPanel.class.getDeclaredField(fieldName);
@@ -293,6 +344,13 @@ public class GoblinPanelTest
 		Field field = GoblinPanel.class.getDeclaredField(fieldName);
 		field.setAccessible(true);
 		return (JLabel) field.get(panel);
+	}
+
+	private static Object invokePrivate(GoblinPanel panel, String methodName, Class<?>[] parameterTypes, Object... args) throws Exception
+	{
+		Method method = GoblinPanel.class.getDeclaredMethod(methodName, parameterTypes);
+		method.setAccessible(true);
+		return method.invoke(panel, args);
 	}
 
 	private static void flushEdt() throws Exception

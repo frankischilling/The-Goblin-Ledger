@@ -42,7 +42,7 @@ public class GoblinKillTrackerOverlay extends OverlayPanel
 		panelComponent.getChildren().clear();
 		panelComponent.getChildren().add(LineComponent.builder()
 			.left(WarBranding.OVERLAY_SESSION_LABEL)
-			.right(String.valueOf(plugin.getSessionGoblinKills()))
+			.right(String.valueOf(plugin.getTodayGoblinKills()))
 			.leftColor(palette.getOverlayHeadingColor())
 			.build());
 		panelComponent.getChildren().add(LineComponent.builder()

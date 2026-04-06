@@ -229,6 +229,11 @@ public final class WarBranding
 		return "Chronicle";
 	}
 
+	public static String tabStatsLabel()
+	{
+		return "Stats";
+	}
+
 	public static String tabCanonBookLabel()
 	{
 		return "Canon Book";

@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.goblintracker.branding.WarBranding;
+import com.goblintracker.branding.WarTextPack;
 import java.util.List;
 import org.junit.Test;
 
@@ -51,6 +52,7 @@ public class WarBrandingTest
 		assertEquals("Kills this day: ", WarBranding.overviewSessionLabel());
 		assertEquals("War-book oath: ", WarBranding.overviewOverallWritingLabel());
 		assertEquals("Next prophecy ETA: ", WarBranding.overviewMilestoneEtaLabel());
+		assertEquals("Stats", WarBranding.tabStatsLabel());
 	}
 
 	@Test
@@ -126,5 +128,15 @@ public class WarBrandingTest
 		assertTrue(loreText.contains("THE BRONZE COUNT"));
 		assertTrue(loreText.contains("A Goblin Chronicle of War, Prophecy, and the Million Dead"));
 		assertTrue(loreText.contains("or building the throne?"));
+	}
+
+	@Test
+	public void bandosWarFlavorLineUsesCleanGrammar()
+	{
+		List<String> lines = WarTextPack.bandosWarLines();
+
+		assertTrue(lines.contains("Strength is proven by the count."));
+		assertTrue(lines.stream().noneMatch(line -> line.contains("Strenghrt")));
+		assertTrue(lines.stream().noneMatch(line -> line.contains("in prove in the count")));
 	}
 }

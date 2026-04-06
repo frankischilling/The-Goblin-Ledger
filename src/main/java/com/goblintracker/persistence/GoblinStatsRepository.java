@@ -19,4 +19,12 @@ public interface GoblinStatsRepository
 	Map<Integer, Long> loadMilestoneReachedAtMs();
 
 	void saveMilestoneReachedAtMs(Map<Integer, Long> milestoneTimes);
+
+	Map<String, Integer> loadDailyKillCounts();
+
+	void saveDailyKillCounts(Map<String, Integer> dailyKillCounts);
+
+	Map<String, Integer> loadAreaKillCounts();
+
+	void saveAreaKillCounts(Map<String, Integer> areaKillCounts);
 }

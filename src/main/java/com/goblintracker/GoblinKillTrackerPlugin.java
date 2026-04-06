@@ -14,21 +14,29 @@ import com.goblintracker.ui.GoblinMilestoneNotifier;
 import com.goblintracker.ui.GoblinNavigation;
 import com.goblintracker.ui.GoblinPanel;
 import com.google.inject.Provides;
+import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import javax.inject.Inject;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.ItemComposition;
@@ -68,6 +76,9 @@ public class GoblinKillTrackerPlugin extends Plugin
 	private static final String EXPORT_TODAY_LOOT_KEY = "todayLootTotals";
 	private static final String EXPORT_LIFETIME_LOOT_KEY = "lifetimeLootTotals";
 	private static final String EXPORT_MILESTONE_TIMES_KEY = "milestoneReachedAtMs";
+	private static final String EXPORT_DAILY_KILL_COUNTS_KEY = "dailyKillCounts";
+	private static final String EXPORT_AREA_KILL_COUNTS_KEY = "areaKillCounts";
+	private static final String DATA_FILE_EXTENSION = ".properties";
 
 	@Inject
 	private Client client;
@@ -196,6 +207,8 @@ public class GoblinKillTrackerPlugin extends Plugin
 			activeProfileName = null;
 			activeLootDate = null;
 			statsState.setLifetimeKills(0);
+			statsState.setAreaKillCounts(Map.of());
+			statsState.setDailyKillCounts(Map.of());
 			statsState.setTodayLootTotals(Map.of());
 			statsState.setLifetimeLootTotals(Map.of());
 			statsState.setMilestoneReachedAtMs(Map.of());
@@ -235,14 +248,14 @@ public class GoblinKillTrackerPlugin extends Plugin
 
 		if (EXPORT_DATA_KEY.equals(event.getKey()) && Boolean.parseBoolean(event.getNewValue()))
 		{
-			exportDataFile();
+			triggerSettingsExportDialog();
 			configManager.setConfiguration(CONFIG_GROUP, EXPORT_DATA_KEY, false);
 			return;
 		}
 
 		if (IMPORT_DATA_KEY.equals(event.getKey()) && Boolean.parseBoolean(event.getNewValue()))
 		{
-			importDataFile();
+			triggerSettingsImportDialog();
 			configManager.setConfiguration(CONFIG_GROUP, IMPORT_DATA_KEY, false);
 			return;
 		}
@@ -284,6 +297,8 @@ public class GoblinKillTrackerPlugin extends Plugin
 			activeProfileName = null;
 			activeLootDate = null;
 			statsState.setLifetimeKills(0);
+			statsState.setAreaKillCounts(Map.of());
+			statsState.setDailyKillCounts(Map.of());
 			statsState.setTodayLootTotals(Map.of());
 			statsState.setLifetimeLootTotals(Map.of());
 			statsState.setMilestoneReachedAtMs(Map.of());
@@ -294,6 +309,8 @@ public class GoblinKillTrackerPlugin extends Plugin
 
 		activeProfileName = localPlayer.getName();
 		statsState.setLifetimeKills(statsRepository.loadLifetimeKills());
+		statsState.setAreaKillCounts(statsRepository.loadAreaKillCounts());
+		statsState.setDailyKillCounts(statsRepository.loadDailyKillCounts());
 		statsState.setLifetimeLootTotals(statsRepository.loadLifetimeLootTotals());
 		statsState.setMilestoneReachedAtMs(statsRepository.loadMilestoneReachedAtMs());
 		activeLootDate = currentDateKey();
@@ -324,6 +341,8 @@ public class GoblinKillTrackerPlugin extends Plugin
 		if (hasActiveProfile())
 		{
 			statsRepository.saveLifetimeKills(0);
+			statsRepository.saveAreaKillCounts(Map.of());
+			statsRepository.saveDailyKillCounts(Map.of());
 			statsRepository.saveLifetimeLootTotals(Map.of());
 			statsRepository.saveTodayLootTotals(activeLootDate, Map.of());
 			statsRepository.saveMilestoneReachedAtMs(Map.of());
@@ -342,6 +361,12 @@ public class GoblinKillTrackerPlugin extends Plugin
 		return statsState.getSessionKills();
 	}
 
+	public int getTodayGoblinKills()
+	{
+		String todayKey = currentDateKey();
+		return Math.max(0, statsState.getDailyKillCounts().getOrDefault(todayKey, 0));
+	}
+
 	public int getTripGoblinKills()
 	{
 		return statsState.getTripKills();
@@ -350,6 +375,11 @@ public class GoblinKillTrackerPlugin extends Plugin
 	public int getLifetimeGoblinKills()
 	{
 		return statsState.getLifetimeKills();
+	}
+
+	public Map<String, Integer> getDailyKillCounts()
+	{
+		return statsState.getDailyKillCounts();
 	}
 
 	public int getSessionKillsPerHour()
@@ -427,12 +457,14 @@ public class GoblinKillTrackerPlugin extends Plugin
 	{
 		ensureTodayLootBucket();
 		int previousLifetimeKills = statsState.getLifetimeKills();
-		statsState.recordKill(killRecord, lootTotals);
+		statsState.recordKill(killRecord, lootTotals, currentDateKey());
 		stampMilestoneReachedTimes(previousLifetimeKills, statsState.getLifetimeKills(), killRecord == null ? null : killRecord.getTimestamp());
 
 		if (hasActiveProfile())
 		{
 			statsRepository.saveLifetimeKills(statsState.getLifetimeKills());
+			statsRepository.saveAreaKillCounts(statsState.getAreaKillCounts());
+			statsRepository.saveDailyKillCounts(statsState.getDailyKillCounts());
 			statsRepository.saveLifetimeLootTotals(statsState.getLifetimeLootTotals());
 			statsRepository.saveTodayLootTotals(activeLootDate, statsState.getTodayLootTotals());
 			statsRepository.saveMilestoneReachedAtMs(statsState.getMilestoneReachedAtMs());
@@ -554,8 +586,54 @@ public class GoblinKillTrackerPlugin extends Plugin
 
 	private void exportDataFile()
 	{
+		exportDataToPath(resolveDataFilePath());
+	}
+
+	private void triggerSettingsExportDialog()
+	{
+		if (GraphicsEnvironment.isHeadless())
+		{
+			exportDataFile();
+			return;
+		}
+
+		SwingUtilities.invokeLater(() -> {
+			JFileChooser chooser = createDataFileChooser();
+			if (chooser.showSaveDialog(null) != JFileChooser.APPROVE_OPTION)
+			{
+				return;
+			}
+
+			Path selectedPath = normalizeSelectedDataPath(
+				chooser.getSelectedFile() == null ? null : chooser.getSelectedFile().toPath(),
+				true);
+			boolean exported = exportDataToPath(selectedPath);
+			if (exported)
+			{
+				JOptionPane.showMessageDialog(
+					null,
+					"Goblin Ledger data exported to:\n" + selectedPath,
+					"Export Complete",
+					JOptionPane.INFORMATION_MESSAGE);
+				return;
+			}
+
+			JOptionPane.showMessageDialog(
+				null,
+				"Failed to export Goblin Ledger data. Check file permissions and try again.",
+				"Export Failed",
+				JOptionPane.ERROR_MESSAGE);
+		});
+	}
+
+	public boolean exportDataToPath(Path dataPath)
+	{
+		if (dataPath == null)
+		{
+			return false;
+		}
+
 		ensureTodayLootBucket();
-		Path dataPath = resolveDataFilePath();
 		try
 		{
 			Path parent = dataPath.getParent();
@@ -571,24 +649,80 @@ public class GoblinKillTrackerPlugin extends Plugin
 			properties.setProperty(EXPORT_TODAY_LOOT_KEY, serializeLootTotals(statsState.getTodayLootTotals()));
 			properties.setProperty(EXPORT_LIFETIME_LOOT_KEY, serializeLootTotals(statsState.getLifetimeLootTotals()));
 			properties.setProperty(EXPORT_MILESTONE_TIMES_KEY, serializeLootTotals(statsState.getMilestoneReachedAtMs()));
+			properties.setProperty(EXPORT_DAILY_KILL_COUNTS_KEY, serializeDailyKillCounts(statsState.getDailyKillCounts()));
+			properties.setProperty(EXPORT_AREA_KILL_COUNTS_KEY, serializeAreaKillCounts(statsState.getAreaKillCounts()));
 
 			try (OutputStream outputStream = Files.newOutputStream(dataPath))
 			{
 				properties.store(outputStream, "The Goblin Ledger Export");
 			}
+			return true;
 		}
 		catch (IOException ignored)
 		{
 			// Export failure is non-fatal. The toggle is still reset by caller.
+			return false;
 		}
 	}
 
 	private void importDataFile()
 	{
-		Path dataPath = resolveDataFilePath();
-		if (!Files.exists(dataPath))
+		importDataFromPath(resolveDataFilePath());
+	}
+
+	private void triggerSettingsImportDialog()
+	{
+		if (GraphicsEnvironment.isHeadless())
 		{
+			importDataFile();
 			return;
+		}
+
+		SwingUtilities.invokeLater(() -> {
+			int confirmation = JOptionPane.showConfirmDialog(
+				null,
+				"Importing will replace your current in-memory Goblin Ledger stats for this profile. Continue?",
+				"Import Goblin Ledger Data",
+				JOptionPane.OK_CANCEL_OPTION,
+				JOptionPane.WARNING_MESSAGE);
+			if (confirmation != JOptionPane.OK_OPTION)
+			{
+				return;
+			}
+
+			JFileChooser chooser = createDataFileChooser();
+			if (chooser.showOpenDialog(null) != JFileChooser.APPROVE_OPTION)
+			{
+				return;
+			}
+
+			Path selectedPath = normalizeSelectedDataPath(
+				chooser.getSelectedFile() == null ? null : chooser.getSelectedFile().toPath(),
+				false);
+			boolean imported = importDataFromPath(selectedPath);
+			if (imported)
+			{
+				JOptionPane.showMessageDialog(
+					null,
+					"Goblin Ledger data imported from:\n" + selectedPath,
+					"Import Complete",
+					JOptionPane.INFORMATION_MESSAGE);
+				return;
+			}
+
+			JOptionPane.showMessageDialog(
+				null,
+				"Failed to import Goblin Ledger data. Ensure the file exists and is a valid export.",
+				"Import Failed",
+				JOptionPane.ERROR_MESSAGE);
+		});
+	}
+
+	public boolean importDataFromPath(Path dataPath)
+	{
+		if (dataPath == null || !Files.exists(dataPath))
+		{
+			return false;
 		}
 
 		Properties properties = new Properties();
@@ -598,7 +732,7 @@ public class GoblinKillTrackerPlugin extends Plugin
 		}
 		catch (IOException ignored)
 		{
-			return;
+			return false;
 		}
 
 		int importedLifetimeKills = parseNonNegativeInt(properties.getProperty(EXPORT_LIFETIME_KILLS_KEY));
@@ -606,9 +740,13 @@ public class GoblinKillTrackerPlugin extends Plugin
 		Map<Integer, Long> importedTodayLoot = deserializeLootTotals(properties.getProperty(EXPORT_TODAY_LOOT_KEY));
 		Map<Integer, Long> importedLifetimeLoot = deserializeLootTotals(properties.getProperty(EXPORT_LIFETIME_LOOT_KEY));
 		Map<Integer, Long> importedMilestoneTimes = deserializeLootTotals(properties.getProperty(EXPORT_MILESTONE_TIMES_KEY));
+		Map<String, Integer> importedDailyKillCounts = deserializeDailyKillCounts(properties.getProperty(EXPORT_DAILY_KILL_COUNTS_KEY));
+		Map<String, Integer> importedAreaKillCounts = deserializeAreaKillCounts(properties.getProperty(EXPORT_AREA_KILL_COUNTS_KEY));
 
 		statsState.resetAll();
 		statsState.setLifetimeKills(importedLifetimeKills);
+		statsState.setAreaKillCounts(importedAreaKillCounts);
+		statsState.setDailyKillCounts(importedDailyKillCounts);
 		statsState.setLifetimeLootTotals(importedLifetimeLoot);
 		statsState.setMilestoneReachedAtMs(importedMilestoneTimes);
 
@@ -626,6 +764,8 @@ public class GoblinKillTrackerPlugin extends Plugin
 		if (hasActiveProfile())
 		{
 			statsRepository.saveLifetimeKills(statsState.getLifetimeKills());
+			statsRepository.saveAreaKillCounts(statsState.getAreaKillCounts());
+			statsRepository.saveDailyKillCounts(statsState.getDailyKillCounts());
 			statsRepository.saveLifetimeLootTotals(statsState.getLifetimeLootTotals());
 			statsRepository.saveTodayLootTotals(activeLootDate, statsState.getTodayLootTotals());
 			statsRepository.saveMilestoneReachedAtMs(statsState.getMilestoneReachedAtMs());
@@ -634,6 +774,55 @@ public class GoblinKillTrackerPlugin extends Plugin
 		killService.clear();
 		milestoneNotifier.reset(statsState.getLifetimeKills());
 		refreshUi();
+		return true;
+	}
+
+	public Path getConfiguredDataFilePath()
+	{
+		return resolveDataFilePath();
+	}
+
+	private JFileChooser createDataFileChooser()
+	{
+		JFileChooser chooser = new JFileChooser();
+		FileNameExtensionFilter filter = new FileNameExtensionFilter("Goblin Ledger Data (*.properties)", "properties");
+		chooser.setFileFilter(filter);
+		chooser.setAcceptAllFileFilterUsed(true);
+
+		Path configuredPath = getConfiguredDataFilePath();
+		if (configuredPath != null)
+		{
+			chooser.setSelectedFile(configuredPath.toFile());
+		}
+		return chooser;
+	}
+
+	private static Path normalizeSelectedDataPath(Path selectedPath, boolean enforceExtension)
+	{
+		if (selectedPath == null)
+		{
+			return null;
+		}
+
+		Path normalized = selectedPath.toAbsolutePath().normalize();
+		if (!enforceExtension)
+		{
+			return normalized;
+		}
+
+		Path fileNamePath = normalized.getFileName();
+		if (fileNamePath == null)
+		{
+			return normalized;
+		}
+
+		String fileName = fileNamePath.toString();
+		if (fileName.toLowerCase(Locale.US).endsWith(DATA_FILE_EXTENSION))
+		{
+			return normalized;
+		}
+
+		return normalized.resolveSibling(fileName + DATA_FILE_EXTENSION);
 	}
 
 	private Path resolveDataFilePath()
@@ -717,6 +906,152 @@ public class GoblinKillTrackerPlugin extends Plugin
 		}
 
 		return totals.isEmpty() ? Map.of() : totals;
+	}
+
+	private static String serializeDailyKillCounts(Map<String, Integer> dailyKillCounts)
+	{
+		if (dailyKillCounts == null || dailyKillCounts.isEmpty())
+		{
+			return "";
+		}
+
+		StringBuilder builder = new StringBuilder();
+		for (Map.Entry<String, Integer> entry : dailyKillCounts.entrySet())
+		{
+			if (entry == null || entry.getKey() == null || entry.getValue() == null)
+			{
+				continue;
+			}
+
+			String dateKey = entry.getKey().trim();
+			if (dateKey.isBlank())
+			{
+				continue;
+			}
+
+			if (builder.length() > 0)
+			{
+				builder.append(',');
+			}
+			builder.append(dateKey).append(':').append(Math.max(0, entry.getValue()));
+		}
+		return builder.toString();
+	}
+
+	private static Map<String, Integer> deserializeDailyKillCounts(String serialized)
+	{
+		if (serialized == null || serialized.isBlank())
+		{
+			return Map.of();
+		}
+
+		Map<String, Integer> counts = new HashMap<>();
+		for (String token : serialized.split(","))
+		{
+			if (token == null || token.isBlank())
+			{
+				continue;
+			}
+
+			String[] parts = token.split(":", 2);
+			if (parts.length != 2)
+			{
+				continue;
+			}
+
+			try
+			{
+				String dateKey = parts[0].trim();
+				int count = Integer.parseInt(parts[1].trim());
+				if (dateKey.isBlank() || count < 0)
+				{
+					continue;
+				}
+
+				counts.merge(dateKey, count, Integer::sum);
+			}
+			catch (NumberFormatException ignored)
+			{
+				// Ignore malformed daily kill export tokens.
+			}
+		}
+
+		return counts.isEmpty() ? Map.of() : counts;
+	}
+
+	private static String serializeAreaKillCounts(Map<String, Integer> areaKillCounts)
+	{
+		if (areaKillCounts == null || areaKillCounts.isEmpty())
+		{
+			return "";
+		}
+
+		StringBuilder builder = new StringBuilder();
+		for (Map.Entry<String, Integer> entry : areaKillCounts.entrySet())
+		{
+			if (entry == null || entry.getKey() == null || entry.getValue() == null)
+			{
+				continue;
+			}
+
+			String areaName = entry.getKey().trim();
+			if (areaName.isBlank())
+			{
+				continue;
+			}
+
+			String encodedArea = Base64.getUrlEncoder().withoutPadding()
+				.encodeToString(areaName.getBytes(StandardCharsets.UTF_8));
+			if (builder.length() > 0)
+			{
+				builder.append(',');
+			}
+
+			builder.append(encodedArea).append(':').append(Math.max(0, entry.getValue()));
+		}
+
+		return builder.toString();
+	}
+
+	private static Map<String, Integer> deserializeAreaKillCounts(String serialized)
+	{
+		if (serialized == null || serialized.isBlank())
+		{
+			return Map.of();
+		}
+
+		Map<String, Integer> counts = new HashMap<>();
+		for (String token : serialized.split(","))
+		{
+			if (token == null || token.isBlank())
+			{
+				continue;
+			}
+
+			String[] parts = token.split(":", 2);
+			if (parts.length != 2)
+			{
+				continue;
+			}
+
+			try
+			{
+				String areaName = new String(Base64.getUrlDecoder().decode(parts[0].trim()), StandardCharsets.UTF_8).trim();
+				int count = Integer.parseInt(parts[1].trim());
+				if (areaName.isBlank() || count < 0)
+				{
+					continue;
+				}
+
+				counts.merge(areaName, count, Integer::sum);
+			}
+			catch (IllegalArgumentException ignored)
+			{
+				// Ignore malformed area kill export tokens.
+			}
+		}
+
+		return counts.isEmpty() ? Map.of() : counts;
 	}
 
 	private static int parseNonNegativeInt(String value)

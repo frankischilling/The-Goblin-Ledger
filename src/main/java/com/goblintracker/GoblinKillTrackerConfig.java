@@ -186,8 +186,8 @@ public interface GoblinKillTrackerConfig extends Config
 
 	@ConfigItem(
 		keyName = "dataFilePath",
-		name = "Data file path",
-		description = "File path for export/import (relative paths resolve under your home folder)",
+		name = "Default data file path",
+		description = "Default path pre-filled in Export/Import dialogs (relative paths resolve under your home folder)",
 		position = 16
 	)
 	default String dataFilePath()
@@ -197,8 +197,8 @@ public interface GoblinKillTrackerConfig extends Config
 
 	@ConfigItem(
 		keyName = "exportData",
-		name = "Export data",
-		description = "Toggle on to export counters and loot data to the configured file",
+		name = "Export data...",
+		description = "Toggle on to open a file dialog and export all counters and loot data",
 		position = 17
 	)
 	default boolean exportData()
@@ -208,8 +208,8 @@ public interface GoblinKillTrackerConfig extends Config
 
 	@ConfigItem(
 		keyName = "importData",
-		name = "Import data",
-		description = "Toggle on to load counters and loot data from the configured file",
+		name = "Import data...",
+		description = "Toggle on to open a file dialog and import all counters and loot data",
 		position = 18
 	)
 	default boolean importData()

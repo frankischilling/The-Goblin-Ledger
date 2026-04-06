@@ -115,7 +115,7 @@ public final class WarTextPack
 		"The tribes measure doom in your progress bar.");
 
 	private static final List<String> BANDOS_WAR_LINES = List.of(
-		"Strength is proven in the count.",
+		"Strength is proven by the count.",
 		"Mercy rots the edge.",
 		"The weak fill the ledger first.",
 		"War is truth. The tally is proof.",

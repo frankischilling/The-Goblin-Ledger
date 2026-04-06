@@ -98,6 +98,8 @@ public class GoblinKillTrackerPluginTest
 		when(statsRepository.loadLifetimeLootTotals()).thenReturn(Map.of());
 		when(statsRepository.loadTodayLootTotals(ArgumentMatchers.anyString())).thenReturn(Map.of());
 		when(statsRepository.loadMilestoneReachedAtMs()).thenReturn(Map.of());
+		when(statsRepository.loadDailyKillCounts()).thenReturn(Map.of());
+		when(statsRepository.loadAreaKillCounts()).thenReturn(Map.of());
 
 		setField(plugin, "client", client);
 		setField(plugin, "config", config);
@@ -139,6 +141,10 @@ public class GoblinKillTrackerPluginTest
 		assertEquals(1, plugin.getLifetimeGoblinKills());
 		assertEquals(1, plugin.getRecentKills().size());
 		verify(statsRepository).saveLifetimeKills(1);
+		verify(statsRepository).saveAreaKillCounts(ArgumentMatchers.argThat(areas ->
+			areas != null && Integer.valueOf(1).equals(areas.get("Lumbridge"))));
+		verify(statsRepository).saveDailyKillCounts(ArgumentMatchers.argThat(counts ->
+			counts != null && counts.values().stream().mapToInt(Integer::intValue).sum() >= 1));
 	}
 
 	@Test
@@ -297,6 +303,8 @@ public class GoblinKillTrackerPluginTest
 		assertEquals(0, plugin.getTripGoblinKills());
 		assertEquals(0, plugin.getLifetimeGoblinKills());
 		verify(statsRepository).saveLifetimeKills(0);
+		verify(statsRepository).saveAreaKillCounts(Map.of());
+		verify(statsRepository).saveDailyKillCounts(Map.of());
 		verify(configManager).setConfiguration("goblinkilltracker", "resetAllCount", false);
 	}
 
@@ -309,27 +317,15 @@ public class GoblinKillTrackerPluginTest
 		when(statsRepository.loadLifetimeKills()).thenReturn(11);
 
 		plugin.startUp();
-
-		ConfigChanged exportChanged = new ConfigChanged();
-		exportChanged.setGroup("goblinkilltracker");
-		exportChanged.setKey("exportData");
-		exportChanged.setNewValue("true");
-		plugin.onConfigChanged(exportChanged);
+		assertTrue(plugin.exportDataToPath(tempExport));
 
 		assertTrue(Files.exists(tempExport));
 
 		plugin.resetAllCount();
 		assertEquals(0, plugin.getLifetimeGoblinKills());
-
-		ConfigChanged importChanged = new ConfigChanged();
-		importChanged.setGroup("goblinkilltracker");
-		importChanged.setKey("importData");
-		importChanged.setNewValue("true");
-		plugin.onConfigChanged(importChanged);
+		assertTrue(plugin.importDataFromPath(tempExport));
 
 		assertEquals(11, plugin.getLifetimeGoblinKills());
-		verify(configManager).setConfiguration("goblinkilltracker", "exportData", false);
-		verify(configManager).setConfiguration("goblinkilltracker", "importData", false);
 
 		Files.deleteIfExists(tempExport);
 	}
@@ -338,12 +334,57 @@ public class GoblinKillTrackerPluginTest
 	public void syncPlayerProfileLoadsPersistedLifetimeForCurrentPlayer() throws Exception
 	{
 		when(statsRepository.loadLifetimeKills()).thenReturn(9);
+		when(statsRepository.loadAreaKillCounts()).thenReturn(Map.of("Lumbridge", 7));
 
 		plugin.syncPlayerProfile();
 
 		assertTrue(plugin.hasActiveProfile());
 		assertEquals(9, plugin.getLifetimeGoblinKills());
+		assertEquals(7, (int) plugin.getAreaKillCounts().getOrDefault("Lumbridge", 0));
 		assertEquals("Frank", plugin.getActiveProfileName());
+	}
+
+	@Test
+	public void exportThenImportRestoresAreaKillCounts() throws Exception
+	{
+		Path tempExport = Files.createTempFile("goblin-ledger-area-test", ".properties");
+		Files.deleteIfExists(tempExport);
+		when(config.dataFilePath()).thenReturn(tempExport.toString());
+		when(statsRepository.loadLifetimeKills()).thenReturn(0);
+
+		plugin.startUp();
+		plugin.handleLootNpc(goblin);
+		assertEquals(1, (int) plugin.getAreaKillCounts().getOrDefault("Lumbridge", 0));
+		assertTrue(plugin.exportDataToPath(tempExport));
+
+		plugin.resetAllCount();
+		assertTrue(plugin.getAreaKillCounts().isEmpty());
+		assertTrue(plugin.importDataFromPath(tempExport));
+
+		assertEquals(1, (int) plugin.getAreaKillCounts().getOrDefault("Lumbridge", 0));
+		Files.deleteIfExists(tempExport);
+	}
+
+	@Test
+	public void directPathExportImportRoundTripRestoresLifetime() throws Exception
+	{
+		Path tempExport = Files.createTempFile("goblin-ledger-direct-api", ".properties");
+		Files.deleteIfExists(tempExport);
+		when(config.dataFilePath()).thenReturn(tempExport.toString());
+		when(statsRepository.loadLifetimeKills()).thenReturn(21);
+
+		plugin.startUp();
+
+		assertTrue(plugin.exportDataToPath(tempExport));
+		assertTrue(Files.exists(tempExport));
+
+		plugin.resetAllCount();
+		assertEquals(0, plugin.getLifetimeGoblinKills());
+
+		assertTrue(plugin.importDataFromPath(tempExport));
+		assertEquals(21, plugin.getLifetimeGoblinKills());
+
+		Files.deleteIfExists(tempExport);
 	}
 
 	@Test
